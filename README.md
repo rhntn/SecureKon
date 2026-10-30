@@ -1,3 +1,5 @@
+<img width="364" height="362" alt="image" src="https://github.com/user-attachments/assets/12da4e0a-4f23-4e8b-87a0-78f25678760c" />
+
 # SecureKon — Simple Secure DNS Manager
 
 **[Download / İndir / Herunterladen / 下载](https://github.com/rhntn/SecureKon/raw/refs/heads/main/downloads/SecureKonSetup.exe)** · Windows 11 x64 · v1.1.3
