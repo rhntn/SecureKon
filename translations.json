@@ -1,0 +1,417 @@
+{
+  "Şifreli DNS · Windows, Chrome ve Edge": [
+    "Encrypted DNS · Windows, Chrome and Edge",
+    "Verschlüsseltes DNS · Windows, Chrome und Edge",
+    "加密 DNS · Windows、Chrome 和 Edge"
+  ],
+  "Başlangıçta çalıştır": [
+    "Run at sign-in",
+    "Bei Anmeldung starten",
+    "登录时启动"
+  ],
+  "Durum okunuyor…": [
+    "Reading status…",
+    "Status wird gelesen…",
+    "正在读取状态…"
+  ],
+  "Etkinleştir": [
+    "Enable",
+    "Aktivieren",
+    "启用"
+  ],
+  "Devre dışı bırak": [
+    "Disable",
+    "Deaktivieren",
+    "禁用"
+  ],
+  "Durum: Açık": [
+    "Status: On",
+    "Status: Ein",
+    "状态：已开启"
+  ],
+  "Durum: Kapalı": [
+    "Status: Off",
+    "Status: Aus",
+    "状态：已关闭"
+  ],
+  "Oturum açıldığında DNS ayarlarını kontrol eder ve düzeltir.\nKapatmak mevcut DNS ayarlarını değiştirmez.": [
+    "Checks and repairs DNS settings at sign-in.\nTurning this off leaves your DNS settings unchanged.",
+    "Prüft und korrigiert DNS-Einstellungen bei der Anmeldung.\nAusschalten ändert Ihre DNS-Einstellungen nicht.",
+    "登录时检查并修复 DNS 设置。\n关闭此选项不会更改当前 DNS 设置。"
+  ],
+  "DNS sağlayıcısı": [
+    "DNS provider",
+    "DNS-Anbieter",
+    "DNS 提供商"
+  ],
+  "Özel DNS": [
+    "Custom DNS",
+    "Benutzerdefiniertes DNS",
+    "自定义 DNS"
+  ],
+  "Şifreli DNS adresi (HTTPS)": [
+    "Encrypted DNS address (HTTPS)",
+    "Verschlüsselte DNS-Adresse (HTTPS)",
+    "加密 DNS 地址（HTTPS）"
+  ],
+  "Birincil IPv4": [
+    "Primary IPv4",
+    "Primäre IPv4",
+    "首选 IPv4"
+  ],
+  "İkincil IPv4 (isteğe bağlı)": [
+    "Secondary IPv4 (optional)",
+    "Sekundäre IPv4 (optional)",
+    "备用 IPv4（可选）"
+  ],
+  "Birincil IPv6": [
+    "Primary IPv6",
+    "Primäre IPv6",
+    "首选 IPv6"
+  ],
+  "İkincil IPv6 (isteğe bağlı)": [
+    "Secondary IPv6 (optional)",
+    "Sekundäre IPv6 (optional)",
+    "备用 IPv6（可选）"
+  ],
+  "Kaydet ve uygula": [
+    "Save and apply",
+    "Speichern und anwenden",
+    "保存并应用"
+  ],
+  "Hazır": [
+    "Ready",
+    "Bereit",
+    "就绪"
+  ],
+  "SecureKon'u kaldır": [
+    "Uninstall SecureKon",
+    "SecureKon deinstallieren",
+    "卸载 SecureKon"
+  ],
+  "Başlangıç denetimi etkinleştirildi.": [
+    "Sign-in check enabled.",
+    "Prüfung bei Anmeldung aktiviert.",
+    "已启用登录时检查。"
+  ],
+  "Başlangıç denetimi devre dışı.": [
+    "Sign-in check disabled.",
+    "Prüfung bei Anmeldung deaktiviert.",
+    "已禁用登录时检查。"
+  ],
+  "Mevcut DNS ayarları korunur.": [
+    "Current DNS settings are retained.",
+    "Aktuelle DNS-Einstellungen bleiben erhalten.",
+    "保留当前 DNS 设置。"
+  ],
+  "Başlangıç ayarı değiştiriliyor…": [
+    "Updating sign-in setting…",
+    "Starteinstellung wird geändert…",
+    "正在更新启动设置…"
+  ],
+  "Kaydedildi · Aktif bağlantı yok": [
+    "Saved · No active connection",
+    "Gespeichert · Keine aktive Verbindung",
+    "已保存 · 无活动连接"
+  ],
+  "DNS ayarları uygulandı": [
+    "DNS settings applied",
+    "DNS-Einstellungen angewendet",
+    "已应用 DNS 设置"
+  ],
+  "Bağlantı kurulduğunda yeniden uygulayabilirsiniz.": [
+    "Apply again after connecting to a network.",
+    "Nach dem Verbinden erneut anwenden.",
+    "连接网络后可重新应用。"
+  ],
+  "Windows, Chrome ve Edge için doğrulandı.": [
+    "Verified for Windows, Chrome and Edge.",
+    "Für Windows, Chrome und Edge geprüft.",
+    "已验证 Windows、Chrome 和 Edge 设置。"
+  ],
+  "DNS ayarları uygulanıyor…": [
+    "Applying DNS settings…",
+    "DNS-Einstellungen werden angewendet…",
+    "正在应用 DNS 设置…"
+  ],
+  "Durum okunamadı": [
+    "Could not read status",
+    "Status konnte nicht gelesen werden",
+    "无法读取状态"
+  ],
+  "Lütfen bekleyin…": [
+    "Please wait…",
+    "Bitte warten…",
+    "请稍候…"
+  ],
+  "İşlem tamamlanamadı": [
+    "Operation failed",
+    "Vorgang fehlgeschlagen",
+    "操作失败"
+  ],
+  "SecureKon, görevleri ve kısayolları kaldırılacak.\n\nMevcut DNS ayarları korunacak. Devam edilsin mi?": [
+    "SecureKon, its tasks and shortcuts will be removed.\n\nCurrent DNS settings will be retained. Continue?",
+    "SecureKon, seine Aufgaben und Verknüpfungen werden entfernt.\n\nAktuelle DNS-Einstellungen bleiben erhalten. Fortfahren?",
+    "将删除 SecureKon、相关任务和快捷方式。\n\n保留当前 DNS 设置。是否继续？"
+  ],
+  "SecureKon kaldır": [
+    "Uninstall SecureKon",
+    "SecureKon deinstallieren",
+    "卸载 SecureKon"
+  ],
+  "SecureKon · Ayarlar düzeltilemedi": [
+    "SecureKon · Could not repair settings",
+    "SecureKon · Einstellungen nicht korrigiert",
+    "SecureKon · 无法修复设置"
+  ],
+  "Geçerli bir HTTPS DNS adresi girin.": [
+    "Enter a valid HTTPS DNS address.",
+    "Geben Sie eine gültige HTTPS-DNS-Adresse ein.",
+    "请输入有效的 HTTPS DNS 地址。"
+  ],
+  "IPv4 ve IPv6 için en az birer DNS adresi gerekli.": [
+    "At least one DNS address is required for IPv4 and IPv6.",
+    "Für IPv4 und IPv6 ist jeweils mindestens eine DNS-Adresse erforderlich.",
+    "IPv4 和 IPv6 各需要至少一个 DNS 地址。"
+  ],
+  "Geçersiz DNS adresi: ": [
+    "Invalid DNS address: ",
+    "Ungültige DNS-Adresse: ",
+    "无效的 DNS 地址："
+  ],
+  "Başlangıç durumunu Görev Yöneticisi üzerinden kontrol edin.": [
+    "Check the startup status in Task Manager.",
+    "Prüfen Sie den Autostartstatus im Task-Manager.",
+    "请在任务管理器中检查启动状态。"
+  ],
+  "Oturum açıldığında sessiz DNS denetimi": [
+    "Silent DNS check at sign-in",
+    "Stille DNS-Prüfung bei Anmeldung",
+    "登录时静默检查 DNS"
+  ],
+  "Önceki DNS işlemi tamamlanamadı.": [
+    "The previous DNS operation did not finish.",
+    "Der vorherige DNS-Vorgang wurde nicht abgeschlossen.",
+    "上一次 DNS 操作未完成。"
+  ],
+  "DNS denetimi zaman aşımına uğradı. SecureKon'u açıp tekrar deneyin.": [
+    "DNS check timed out. Open SecureKon and try again.",
+    "Zeitüberschreitung bei der DNS-Prüfung. Öffnen Sie SecureKon und versuchen Sie es erneut.",
+    "DNS 检查超时。请打开 SecureKon 并重试。"
+  ],
+  "Kurulum için yönetici izni gerekli.": [
+    "Administrator permission is required for installation.",
+    "Für die Installation sind Administratorrechte erforderlich.",
+    "安装需要管理员权限。"
+  ],
+  "Kaldırmak için yönetici izni gerekli.": [
+    "Administrator permission is required to uninstall.",
+    "Für die Deinstallation sind Administratorrechte erforderlich.",
+    "卸载需要管理员权限。"
+  ],
+  "SecureKon kaldırıldı. Mevcut DNS ayarları korundu.": [
+    "SecureKon was removed. Current DNS settings were retained.",
+    "SecureKon wurde entfernt. Aktuelle DNS-Einstellungen bleiben erhalten.",
+    "SecureKon 已卸载。已保留当前 DNS 设置。"
+  ],
+  "SecureKon kaldırılsın mı? Mevcut DNS ayarları korunur.": [
+    "Uninstall SecureKon? Current DNS settings will be retained.",
+    "SecureKon deinstallieren? Aktuelle DNS-Einstellungen bleiben erhalten.",
+    "是否卸载 SecureKon？将保留当前 DNS 设置。"
+  ],
+  "Bağlantılı klasör kullanılamaz: ": [
+    "Linked folders cannot be used: ",
+    "Verknüpfte Ordner können nicht verwendet werden: ",
+    "无法使用链接文件夹："
+  ],
+  "Geçersiz kurulum dosyası.": [
+    "Invalid installation file.",
+    "Ungültige Installationsdatei.",
+    "无效的安装文件。"
+  ],
+  "Eksik kurulum bileşeni: ": [
+    "Missing installation component: ",
+    "Fehlende Installationskomponente: ",
+    "缺少安装组件："
+  ],
+  "Geçersiz kullanıcı klasörü.": [
+    "Invalid user folder.",
+    "Ungültiger Benutzerordner.",
+    "无效的用户文件夹。"
+  ],
+  "SecureKon, Windows 11 gerektirir.": [
+    "SecureKon requires Windows 11.",
+    "SecureKon benötigt Windows 11.",
+    "SecureKon 需要 Windows 11。"
+  ],
+  "Önce açık SecureKon penceresini kapatın, sonra kurulumu tekrar başlatın.": [
+    "Close SecureKon, then restart the installer.",
+    "Schließen Sie SecureKon und starten Sie die Installation erneut.",
+    "请关闭 SecureKon，然后重新运行安装程序。"
+  ],
+  "Kurulum klasörünün sahibi doğrulanamadı: ": [
+    "Could not verify the installation folder owner: ",
+    "Der Besitzer des Installationsordners konnte nicht geprüft werden: ",
+    "无法验证安装文件夹的所有者："
+  ],
+  "SecureKon: doğrulanmış DNS ayarlarını uygular. Başlangıç kısayolu tarafından çağrılır.": [
+    "SecureKon: applies validated DNS settings. Invoked by the startup shortcut.",
+    "SecureKon: Wendet geprüfte DNS-Einstellungen an. Aufruf über die Autostart-Verknüpfung.",
+    "SecureKon：应用已验证的 DNS 设置。由启动快捷方式调用。"
+  ],
+  "SecureKon DNS yöneticisi": [
+    "SecureKon DNS manager",
+    "SecureKon DNS-Verwaltung",
+    "SecureKon DNS 管理器"
+  ],
+  "Oturum açıldığında DNS ayarlarını denetler": [
+    "Checks DNS settings at sign-in",
+    "Prüft DNS-Einstellungen bei Anmeldung",
+    "登录时检查 DNS 设置"
+  ],
+  "SecureKon penceresini kapatıp kaldırmayı tekrar deneyin.": [
+    "Close SecureKon and try uninstalling again.",
+    "Schließen Sie SecureKon und versuchen Sie die Deinstallation erneut.",
+    "请关闭 SecureKon，然后重试卸载。"
+  ],
+  "SecureKon · Kurulum": [
+    "SecureKon · Setup",
+    "SecureKon · Installation",
+    "SecureKon · 安装"
+  ],
+  "Windows, Chrome ve Edge için DNS yönetimi.\n\nKurulumda bir kez yönetici izni gerekir.\nGünlük kullanımda tekrar izin istenmez.\nKısayol Başlat menüsüne eklenir.": [
+    "DNS management for Windows, Chrome and Edge.\n\nInstallation requires administrator permission once.\nDaily use needs no further permission.\nA shortcut is added to the Start menu.",
+    "DNS-Verwaltung für Windows, Chrome und Edge.\n\nEinmalig Administratorrechte zur Installation.\nIm Alltag ist keine weitere Freigabe nötig.\nVerknüpfung im Startmenü.",
+    "管理 Windows、Chrome 和 Edge 的 DNS。\n\n安装时需要一次管理员授权。\n日常使用无需再次授权。\n快捷方式将添加到开始菜单。"
+  ],
+  "Kur": [
+    "Install",
+    "Installieren",
+    "安装"
+  ],
+  "SecureKon'u aç": [
+    "Open SecureKon",
+    "SecureKon öffnen",
+    "打开 SecureKon"
+  ],
+  "SecureKon kuruluyor…\n\nWindows yönetici izni penceresini onaylayın.": [
+    "Installing SecureKon…\n\nApprove the Windows administrator permission prompt.",
+    "SecureKon wird installiert…\n\nBestätigen Sie die Windows-Administratorabfrage.",
+    "正在安装 SecureKon…\n\n请确认 Windows 管理员授权提示。"
+  ],
+  "Kurulum tamamlanamadı. Gösterilen hatayı giderip yeniden deneyin.": [
+    "Installation failed. Resolve the displayed error and try again.",
+    "Installation fehlgeschlagen. Beheben Sie den angezeigten Fehler und versuchen Sie es erneut.",
+    "安装失败。请解决显示的错误后重试。"
+  ],
+  "Kurulum tamamlandı.\n\nDNS sağlayıcınızı seçmek ve ayarları uygulamak için\nSecureKon'u açın.": [
+    "Installation complete.\n\nOpen SecureKon to select a DNS provider\nand apply your settings.",
+    "Installation abgeschlossen.\n\nÖffnen Sie SecureKon, wählen Sie einen DNS-Anbieter\nund wenden Sie die Einstellungen an.",
+    "安装完成。\n\n打开 SecureKon，选择 DNS 提供商\n并应用设置。"
+  ],
+  "Aşama: ": [
+    "Stage: ",
+    "Schritt: ",
+    "阶段："
+  ],
+  "Hata kaydı: ": [
+    "Error log: ",
+    "Fehlerprotokoll: ",
+    "错误日志："
+  ],
+  "Sistem kontrolü": [
+    "System check",
+    "Systemprüfung",
+    "系统检查"
+  ],
+  "Mevcut ayarlar okunuyor": [
+    "Reading existing settings",
+    "Vorhandene Einstellungen lesen",
+    "读取现有设置"
+  ],
+  "Görev kontrolü": [
+    "Checking scheduled task",
+    "Geplante Aufgabe prüfen",
+    "检查计划任务"
+  ],
+  "Dosyalar kuruluyor": [
+    "Installing files",
+    "Dateien installieren",
+    "安装文件"
+  ],
+  "Yetkili görev kaydediliyor": [
+    "Registering privileged task",
+    "Privilegierte Aufgabe registrieren",
+    "注册特权任务"
+  ],
+  "Kısayollar oluşturuluyor": [
+    "Creating shortcuts",
+    "Verknüpfungen erstellen",
+    "创建快捷方式"
+  ],
+  "Eski görevler kaldırılıyor": [
+    "Removing old tasks",
+    "Alte Aufgaben entfernen",
+    "删除旧任务"
+  ],
+  "Kaldırılıyor": [
+    "Uninstalling",
+    "Deinstallation",
+    "正在卸载"
+  ],
+  "Kurulum başlatılıyor": [
+    "Starting setup",
+    "Installation starten",
+    "启动安装程序"
+  ],
+  "Geçersiz istek dosyası.": [
+    "Invalid request file.",
+    "Ungültige Anforderungsdatei.",
+    "无效的请求文件。"
+  ],
+  "Geçersiz istek kimliği.": [
+    "Invalid request ID.",
+    "Ungültige Anforderungs-ID.",
+    "无效的请求标识。"
+  ],
+  "Desteklenmeyen işlem.": [
+    "Unsupported operation.",
+    "Nicht unterstützter Vorgang.",
+    "不支持的操作。"
+  ],
+  "Tarayici politikasi dogrulanamadi.": [
+    "Browser policy verification failed.",
+    "Browserrichtlinie konnte nicht geprüft werden.",
+    "浏览器策略验证失败。"
+  ],
+  "Sifreli DNS ayari dogrulanamadi.": [
+    "Encrypted DNS verification failed.",
+    "Verschlüsselte DNS-Einstellung konnte nicht geprüft werden.",
+    "加密 DNS 设置验证失败。"
+  ],
+  "Beklenen: ": [
+    "Expected: ",
+    "Erwartet: ",
+    "预期："
+  ],
+  "; okunan: ": [
+    "; actual: ",
+    "; gelesen: ",
+    "；实际："
+  ],
+  "Geçerli bir HTTPS DNS adresi girin; kullanıcı bilgisi, boşluk ve # kullanmayın.": [
+    "Enter a valid HTTPS DNS address without credentials, spaces or #.",
+    "Geben Sie eine gültige HTTPS-DNS-Adresse ohne Anmeldedaten, Leerzeichen oder # ein.",
+    "请输入有效的 HTTPS DNS 地址，不含凭据、空格或 #。"
+  ],
+  "Hakkında": [
+    "About",
+    "Über",
+    "关于"
+  ],
+  "Sürüm": [
+    "Version",
+    "Version",
+    "版本"
+  ]
+}

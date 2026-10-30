@@ -1,0 +1,6 @@
+*.exe
+!downloads/SecureKonSetup.exe
+*.pdb
+Source.zip
+*.log
+.vs/
