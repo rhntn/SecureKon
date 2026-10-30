@@ -1,6 +1,6 @@
 # SecureKon — Simple Secure DNS Manager
 
-**[Download / İndir / Herunterladen / 下载](https://github.com/rhntn/SecureKon/releases/latest/download/SecureKonSetup.exe)** · Windows 11 x64 · v2.0.0 · Rust
+**[Download / İndir / Herunterladen / 下载](https://github.com/rhntn/SecureKon/raw/refs/heads/main/downloads/SecureKonSetup.exe)** · Windows 11 x64 · v2.0.0 · Rust
 
 Created by **[OMTY](https://labs.omty.io)**
 
