@@ -32,7 +32,7 @@ AdGuard, Google, Cloudflare veya özel DNS ayarlarını IPv4 ve IPv6 için uygul
 2. SecureKon'u açıp DNS sağlayıcını seç.
 3. **Kaydet ve uygula** düğmesine tıkla.
 
-> **Başlangıçta çalıştır** anında kaydedilir; kapatmak mevcut DNS ayarlarını değiştirmez. PowerShell veya .NET gerekmez.
+> **Başlangıçta çalıştır** anında kaydedilir, kapatmak mevcut DNS ayarlarını değiştirmez.
 
 ---
 
@@ -50,7 +50,7 @@ Applies AdGuard, Google, Cloudflare or custom DNS settings for IPv4 and IPv6. Op
 2. Open SecureKon and choose your DNS provider.
 3. Click **Save and apply**.
 
-> **Run at sign-in** is saved immediately; turning it off leaves your DNS settings unchanged. No PowerShell or .NET required.
+> **Run at sign-in** is saved immediately, turning it off leaves your DNS settings unchanged.
 
 ---
 
@@ -68,7 +68,7 @@ Wendet AdGuard, Google, Cloudflare oder eigene DNS-Einstellungen für IPv4 und I
 2. SecureKon öffnen und einen DNS-Anbieter wählen.
 3. **Speichern und anwenden** anklicken.
 
-> **Bei Anmeldung starten** wird sofort gespeichert; das Ausschalten ändert die DNS-Einstellungen nicht. PowerShell und .NET sind nicht erforderlich.
+> **Bei Anmeldung starten** wird sofort gespeichert, das Ausschalten ändert die DNS-Einstellungen nicht.
 
 ---
 
@@ -86,7 +86,7 @@ Wendet AdGuard, Google, Cloudflare oder eigene DNS-Einstellungen für IPv4 und I
 2. 打开 SecureKon，选择 DNS 提供商。
 3. 点击 **保存并应用**。
 
-> **登录时启动** 的更改立即保存；关闭此选项不会更改当前 DNS 设置。无需 PowerShell 或 .NET。
+> **登录时启动** 的更改立即保存, 关闭此选项不会更改当前 DNS 设置。
 
 ---
 
