@@ -1,41 +1,20 @@
-<img width="364" height="362" alt="image" src="https://github.com/user-attachments/assets/12da4e0a-4f23-4e8b-87a0-78f25678760c" />
-
 # SecureKon — Simple Secure DNS Manager
 
-**[Download / İndir / Herunterladen / 下载](https://github.com/rhntn/SecureKon/raw/refs/heads/main/downloads/SecureKonSetup.exe)** · Windows 11 x64 · v1.1.3
+**[Download / İndir / Herunterladen / 下载](https://github.com/rhntn/SecureKon/releases/latest/download/SecureKonSetup.exe)** · Windows 11 x64 · v2.0.0 · Rust
 
 Created by **[OMTY](https://labs.omty.io)**
 
-[English](#english) · [Türkçe](#türkçe) · [Deutsch](#deutsch) · [简体中文](#简体中文)
+## Türkçe
+Windows, Chrome ve Edge için şifreli DNS yöneticisi. AdGuard, Google, Cloudflare veya özel IPv4/IPv6 adresleri uygular. Kurulumu aç, **Kur** seçeneğine bas; ardından sağlayıcı seçip **Kaydet ve uygula** düğmesine tıkla. **Başlangıçta çalıştır** anında kaydedilir; kapatmak DNS ayarlarını değiştirmez.
 
 ## English
-
-**What is it?** A simple encrypted DNS manager for Windows 11, Chrome and Edge.
-
-**What does it do?** Applies AdGuard, Google, Cloudflare or custom DNS settings for IPv4 and IPv6. Optionally checks and repairs settings at sign-in.
-
-**How to use:** Install, select your provider, then click **Save and apply**. **Run at sign-in** is saved immediately; turning it off does not reset your DNS settings.
-
-## Türkçe
-
-**Nedir?** Windows 11, Chrome ve Edge için basit bir şifreli DNS yöneticisi.
-
-**Ne işe yarar?** AdGuard, Google, Cloudflare veya özel DNS ayarlarını IPv4 ve IPv6 için uygular. İsteğe bağlı olarak oturum açılışında ayarları kontrol edip düzeltir.
-
-**Nasıl kullanılır?** Uygulamayı kur, sağlayıcı seç ve **Kaydet ve uygula** düğmesine bas. **Başlangıçta çalıştır** anında kaydedilir; kapatmak mevcut DNS ayarlarını sıfırlamaz.
+Encrypted DNS manager for Windows, Chrome and Edge. Applies AdGuard, Google, Cloudflare or custom IPv4/IPv6 settings. Run setup, click **Install**, select a provider and **Save and apply**. **Run at sign-in** is saved immediately; disabling it leaves DNS settings unchanged.
 
 ## Deutsch
-
-**Was ist das?** Eine einfache Verwaltung für verschlüsseltes DNS unter Windows 11, Chrome und Edge.
-
-**Was kann es?** Wendet AdGuard, Google, Cloudflare oder eigene DNS-Einstellungen für IPv4 und IPv6 an. Prüft und korrigiert die Einstellungen auf Wunsch bei der Anmeldung.
-
-**So geht’s:** Installieren, Anbieter wählen und **Speichern und anwenden** anklicken. **Bei Anmeldung starten** wird sofort gespeichert; das Ausschalten setzt die DNS-Einstellungen nicht zurück.
+Verwaltung für verschlüsseltes DNS unter Windows, Chrome und Edge. Unterstützt AdGuard, Google, Cloudflare sowie eigene IPv4-/IPv6-Adressen. Setup öffnen, **Installieren**, Anbieter wählen und **Speichern und anwenden**. **Bei Anmeldung starten** wird sofort gespeichert; Ausschalten ändert die DNS-Einstellungen nicht.
 
 ## 简体中文
+适用于 Windows、Chrome 和 Edge 的加密 DNS 管理器。支持 AdGuard、Google、Cloudflare 及自定义 IPv4/IPv6 地址。运行安装程序，点击 **安装**，选择提供商，然后点击 **保存并应用**。**登录时启动** 的更改立即保存；关闭不会更改 DNS 设置。
 
-**这是什么？** 适用于 Windows 11、Chrome 和 Edge 的简易加密 DNS 管理器。
-
-**有什么用？** 为 IPv4 和 IPv6 应用 AdGuard、Google、Cloudflare 或自定义 DNS 设置。可在登录时自动检查并修复设置。
-
-**如何使用？** 安装后选择提供商，点击 **保存并应用**。**登录时启动** 的更改立即保存；关闭此选项不会重置当前 DNS 设置。
+## Build
+Windows: Rust stable and Visual Studio C++ Build Tools with Windows SDK. Run `build.cmd`. The lockfile fixes dependency versions. Linux cross compilation uses the `x86_64-pc-windows-gnu` Rust target and MinGW-w64.

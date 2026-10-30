@@ -1,0 +1,9 @@
+{
+  "version": "2.0.0",
+  "target": "x86_64-pc-windows-gnu",
+  "rust": "1.99.1",
+  "installer_sha256": "f21f5f7af6d7eeeef7fa37b69764cf8d79df973e01464822db2fb63938eaa15a",
+  "installer_bytes": 7873024,
+  "runtime_windows_tested": false,
+  "user_windows_test_report": "User reported tested with no problems, 2026-10-30"
+}
