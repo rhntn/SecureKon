@@ -146,10 +146,14 @@ fn matches(s: &DNS_INTERFACE_SETTINGS3, ips: &[String], url: &str) -> bool {
 }
 fn apply_adapter(a: &Adapter, ips: &[String], url: &str, v6: bool) -> Result<bool> {
     let before = read(a.guid, v6)?;
-    if matches(&before.0, ips, url) {
+    if matches(&before.0, ips, url)
+        && profile_is_automatic(&before.0)?
+        && same_addresses(&effective_dns(a, v6)?, ips)
+    {
         return Ok(false);
     }
     let mut servers = wide(&ips.join(","));
+    let mut empty = wide("");
     let mut template = wide(url);
     let mut doh: Vec<_> = ips
         .iter()
@@ -170,9 +174,13 @@ fn apply_adapter(a: &Adapter, ips: &[String], url: &str, v6: bool) -> Result<boo
         .collect();
     let s = DNS_INTERFACE_SETTINGS3 {
         Version: 3,
-        Flags: (DNS_SETTING_NAMESERVER | DNS_SETTING_DOH | if v6 { DNS_SETTING_IPV6 } else { 0 })
-            as u64,
+        Flags: (DNS_SETTING_NAMESERVER
+            | DNS_SETTING_DOH
+            | DNS_SETTING_PROFILE_NAMESERVER
+            | DNS_SETTING_DOH_PROFILE
+            | if v6 { DNS_SETTING_IPV6 } else { 0 }) as u64,
         NameServer: PWSTR(servers.as_mut_ptr()),
+        ProfileNameServer: PWSTR(empty.as_mut_ptr()),
         cServerProperties: properties.len() as u32,
         ServerProperties: properties.as_mut_ptr(),
         ..Default::default()
@@ -180,9 +188,13 @@ fn apply_adapter(a: &Adapter, ips: &[String], url: &str, v6: bool) -> Result<boo
     unsafe {
         SetInterfaceDnsSettings(a.guid, (&s as *const DNS_INTERFACE_SETTINGS3).cast()).ok()?;
     }
-    for _ in 0..3 {
+    for _ in 0..10 {
         std::thread::sleep(std::time::Duration::from_millis(200));
-        if matches(&read(a.guid, v6)?.0, ips, url) {
+        let after = read(a.guid, v6)?;
+        if matches(&after.0, ips, url)
+            && profile_is_automatic(&after.0)?
+            && same_addresses(&effective_dns(a, v6)?, ips)
+        {
             return Ok(true);
         }
     }
@@ -198,15 +210,20 @@ fn browsers(c: &Config, enabled: bool) -> Result<bool> {
         r"SOFTWARE\Policies\Google\Chrome",
         r"SOFTWARE\Policies\Microsoft\Edge",
     ] {
-        let (k, _) = RegKey::predef(HKEY_LOCAL_MACHINE).create_subkey(path)?;
-        let desired = if enabled {
-            vec![
-                ("DnsOverHttpsTemplates", c.url.as_str()),
-                ("DnsOverHttpsMode", "secure"),
-            ]
-        } else {
-            vec![("DnsOverHttpsMode", "off")]
-        };
+        let root = RegKey::predef(HKEY_LOCAL_MACHINE);
+        if !enabled {
+            match root.open_subkey_with_flags(path, KEY_READ | KEY_SET_VALUE) {
+                Ok(k) => changed |= clear_browser_policy(&k)?,
+                Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+                Err(e) => return Err(e.into()),
+            }
+            continue;
+        }
+        let (k, _) = root.create_subkey(path)?;
+        let desired = [
+            ("DnsOverHttpsTemplates", c.url.as_str()),
+            ("DnsOverHttpsMode", "secure"),
+        ];
         for (name, wanted) in desired {
             let right = k
                 .get_raw_value(name)
@@ -222,19 +239,89 @@ fn browsers(c: &Config, enabled: bool) -> Result<bool> {
                 "Browser policy verification failed"
             );
         }
-        if !enabled {
-            match k.delete_value("DnsOverHttpsTemplates") {
-                Ok(()) => changed = true,
-                Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
-                Err(e) => return Err(e.into()),
-            }
-            ensure!(
-                matches!(k.get_raw_value("DnsOverHttpsTemplates"), Err(e) if e.kind() == std::io::ErrorKind::NotFound),
-                "Browser template cleanup verification failed"
-            );
-        }
     }
     Ok(changed)
+}
+fn clear_browser_policy(k: &RegKey) -> Result<bool> {
+    let mut changed = false;
+    for name in ["DnsOverHttpsMode", "DnsOverHttpsTemplates"] {
+        match k.delete_value(name) {
+            Ok(()) => changed = true,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+            Err(e) => return Err(e.into()),
+        }
+        ensure!(
+            matches!(k.get_raw_value(name), Err(e) if e.kind() == std::io::ErrorKind::NotFound),
+            "Browser policy cleanup verification failed: {name}"
+        );
+    }
+    Ok(changed)
+}
+
+fn profile_is_automatic(s: &DNS_INTERFACE_SETTINGS3) -> Result<bool> {
+    Ok((s.ProfileNameServer.is_null()
+        || unsafe { s.ProfileNameServer.to_string()? }
+            .trim()
+            .is_empty())
+        && s.cProfileServerProperties == 0)
+}
+
+// Read the resolvers Windows actually uses, independently of the configuration
+// API. Checking saved DNS settings alone can miss a conflicting network profile.
+fn effective_dns(a: &Adapter, v6: bool) -> Result<Vec<String>> {
+    unsafe {
+        let mut size = 16384u32;
+        let mut buffer = Vec::<u64>::new();
+        for _ in 0..4 {
+            buffer.resize((size as usize).div_ceil(8), 0);
+            let code = GetAdaptersAddresses(
+                0,
+                GAA_FLAG_INCLUDE_ALL_INTERFACES,
+                None,
+                Some(buffer.as_mut_ptr().cast()),
+                &mut size,
+            );
+            if code == ERROR_BUFFER_OVERFLOW.0 {
+                continue;
+            }
+            WIN32_ERROR(code).ok()?;
+            let mut p = buffer.as_ptr().cast::<IP_ADAPTER_ADDRESSES_LH>();
+            while !p.is_null() {
+                let adapter = &*p;
+                if adapter.Anonymous1.Anonymous.IfIndex == a.index || adapter.Ipv6IfIndex == a.index
+                {
+                    let mut result = Vec::new();
+                    let mut server = adapter.FirstDnsServerAddress;
+                    while !server.is_null() {
+                        let addr = (*server).Address;
+                        if !addr.lpSockaddr.is_null() {
+                            let ip = match (*addr.lpSockaddr).sa_family {
+                                AF_INET6 if v6 => Some(IpAddr::V6(Ipv6Addr::from(
+                                    (*addr.lpSockaddr.cast::<SOCKADDR_IN6>()).sin6_addr.u.Byte,
+                                ))),
+                                AF_INET if !v6 => Some(IpAddr::V4(Ipv4Addr::from(
+                                    (*addr.lpSockaddr.cast::<SOCKADDR_IN>())
+                                        .sin_addr
+                                        .S_un
+                                        .S_addr
+                                        .to_ne_bytes(),
+                                ))),
+                                _ => None,
+                            };
+                            if let Some(ip) = ip {
+                                result.push(ip.to_string());
+                            }
+                        }
+                        server = (*server).Next;
+                    }
+                    return Ok(result);
+                }
+                p = adapter.Next;
+            }
+            anyhow::bail!("Adapter disappeared while reading effective DNS");
+        }
+        anyhow::bail!("Effective DNS list kept changing")
+    }
 }
 fn has_v6_path(a: &Adapter) -> Result<bool> {
     unsafe {
@@ -426,18 +513,34 @@ fn clear_owned_v6(a: &Adapter, legacy: Option<&Config>) -> Result<Option<bool>> 
     if !ours {
         return Ok(None);
     }
-    reset_static_dns(a, true).map(Some)
+    // The ownership check covers the adapter configuration, not an unrelated
+    // profile. Only an explicit automatic-DNS request clears both scopes.
+    reset_static_dns(a, true, false).map(Some)
 }
 
-fn reset_static_dns(a: &Adapter, v6: bool) -> Result<bool> {
-    if static_dns(a, v6)?.trim().is_empty() {
+fn reset_static_dns(a: &Adapter, v6: bool, reset_profile: bool) -> Result<bool> {
+    if static_dns(a, v6)?.trim().is_empty()
+        && (!reset_profile || profile_is_automatic(&read(a.guid, v6)?.0)?)
+    {
         return Ok(false);
     }
     let mut empty = wide("");
     let reset = DNS_INTERFACE_SETTINGS3 {
         Version: 3,
-        Flags: (DNS_SETTING_NAMESERVER | if v6 { DNS_SETTING_IPV6 } else { 0 }) as u64,
+        Flags: (DNS_SETTING_NAMESERVER
+            | DNS_SETTING_DOH
+            | if reset_profile {
+                DNS_SETTING_PROFILE_NAMESERVER | DNS_SETTING_DOH_PROFILE
+            } else {
+                0
+            }
+            | if v6 { DNS_SETTING_IPV6 } else { 0 }) as u64,
         NameServer: PWSTR(empty.as_mut_ptr()),
+        ProfileNameServer: if reset_profile {
+            PWSTR(empty.as_mut_ptr())
+        } else {
+            PWSTR::null()
+        },
         ..Default::default()
     };
     unsafe {
@@ -445,7 +548,9 @@ fn reset_static_dns(a: &Adapter, v6: bool) -> Result<bool> {
     }
     for _ in 0..3 {
         std::thread::sleep(Duration::from_millis(200));
-        if static_dns(a, v6)?.trim().is_empty() {
+        if static_dns(a, v6)?.trim().is_empty()
+            && (!reset_profile || profile_is_automatic(&read(a.guid, v6)?.0)?)
+        {
             return Ok(true);
         }
     }
@@ -461,7 +566,7 @@ fn windows_automatic() -> Result<ApplyResult> {
     // stale static DNS. Virtual/VPN adapters and IP addressing are untouched.
     for a in adapters(false)? {
         for (v6, enabled) in [(false, a.v4), (true, a.v6)] {
-            if enabled && let Err(e) = reset_static_dns(&a, v6) {
+            if enabled && let Err(e) = reset_static_dns(&a, v6, true) {
                 errors.push(format!("{} / IPv{}: {e:#}", a.name, if v6 { 6 } else { 4 }));
             }
         }
@@ -679,6 +784,46 @@ pub fn worker() -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn disabling_browser_policy_removes_values_and_preserves_other_policies() {
+        let root = RegKey::predef(HKEY_CURRENT_USER);
+        let path = format!(r"Software\SecureKonTests\{}", uuid::Uuid::new_v4());
+        let (key, _) = root.create_subkey(&path).unwrap();
+        let result = (|| -> Result<()> {
+            key.set_value("UnrelatedPolicy", &1u32)?;
+            for mode in ["secure", "off"] {
+                key.set_value("DnsOverHttpsMode", &mode)?;
+                key.set_value("DnsOverHttpsTemplates", &"https://dns.google/dns-query")?;
+                assert!(clear_browser_policy(&key)?);
+                assert!(!clear_browser_policy(&key)?);
+                assert_eq!(key.get_value::<u32, _>("UnrelatedPolicy")?, 1);
+                for name in ["DnsOverHttpsMode", "DnsOverHttpsTemplates"] {
+                    assert_eq!(
+                        key.get_raw_value(name).unwrap_err().kind(),
+                        std::io::ErrorKind::NotFound
+                    );
+                }
+            }
+            Ok(())
+        })();
+        drop(key);
+        root.delete_subkey_all(&path).unwrap();
+        result.unwrap();
+    }
+    #[test]
+    fn profile_dns_and_profile_doh_both_require_cleanup() {
+        let mut names = wide("8.8.8.8,8.8.4.4");
+        let mut s = DNS_INTERFACE_SETTINGS3::default();
+        assert!(profile_is_automatic(&s).unwrap());
+        s.ProfileNameServer = PWSTR(names.as_mut_ptr());
+        assert!(!profile_is_automatic(&s).unwrap());
+        let mut empty = wide("");
+        s.ProfileNameServer = PWSTR(empty.as_mut_ptr());
+        s.cProfileServerProperties = 1;
+        assert!(!profile_is_automatic(&s).unwrap());
+        s.cProfileServerProperties = 0;
+        assert!(profile_is_automatic(&s).unwrap());
+    }
     #[test]
     fn detects_doh_drift_without_writing() {
         let mut names = wide("8.8.8.8,8.8.4.4");

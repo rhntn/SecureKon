@@ -430,6 +430,8 @@ mod tests {
                     Err(e) => panic!("{e}"),
                 }
             };
+            // Windows inherits the listener's nonblocking mode on accept.
+            tcp.set_nonblocking(false).unwrap();
             tcp.set_read_timeout(Some(Duration::from_secs(3))).unwrap();
             tcp.set_write_timeout(Some(Duration::from_secs(3))).unwrap();
             let Ok(mut stream) = acceptor.accept(tcp) else {
@@ -455,6 +457,8 @@ mod tests {
             );
             let _ = stream.write_all(response.as_bytes());
             let _ = stream.write_all(&body);
+            let _ = stream.flush();
+            let _ = stream.shutdown();
         });
         let endpoint = url::Url::parse(&format!("https://{host}:{port}/dns-query")).unwrap();
         let mut builder = client_builder(&endpoint, ip, ip, Duration::from_secs(3)).unwrap();

@@ -1,13 +1,14 @@
 {
   "version": "2.0.1",
-  "target": "x86_64-pc-windows-gnu",
+  "target": "x86_64-pc-windows-msvc",
   "rust": "1.99.1",
-  "installer_sha256": "6759d53c48fbc82a05100ff8f69f2ea00f41200a73ceb3a4b082ca6ce938b4ff",
-  "installer_bytes": 8946176,
-  "unit_tests_passed": 26,
+  "installer_sha256": "447a6435d106a66203caf8307983d210166a0c2b432a9c236c08511cdaeee121",
+  "installer_bytes": 8926720,
+  "unit_tests_passed": 30,
   "windows_target_clippy": "passed with warnings denied",
   "runtime_windows_tested": false,
   "local_https_ipv4_ipv6_tests": true,
-  "base_commit": "0185961",
-  "original_installer_sha256": "f21f5f7af6d7eeeef7fa37b69764cf8d79df973e01464822db2fb63938eaa15a"
+  "base_commit": "9bb48f3ca679d03689e521109a0c10e5390dbd0d",
+  "original_installer_sha256": "6759d53c48fbc82a05100ff8f69f2ea00f41200a73ceb3a4b082ca6ce938b4ff",
+  "windows_self_test_passed": true
 }
