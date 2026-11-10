@@ -1,6 +1,6 @@
 [package]
 name = "securekon"
-version = "2.0.0"
+version = "2.0.1"
 edition = "2024"
 [dependencies]
 anyhow = "1"
@@ -8,10 +8,15 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 url = "2"
 uuid = { version = "1", features = ["v4"] }
+reqwest = { version = "0.13.5", default-features = false, features = ["blocking", "native-tls"] }
 [target.'cfg(windows)'.dependencies]
 eframe = { version = "0.37", default-features = false, features = ["default_fonts", "glow"] }
 winreg = "0.55"
 windows = { version = "0.62.2", features = ["Win32_Foundation", "Win32_NetworkManagement_IpHelper", "Win32_NetworkManagement_Ndis", "Win32_Networking_WinSock", "Win32_NetworkManagement_Dns", "Win32_Security", "Win32_Security_Authorization", "Win32_Storage_FileSystem", "Win32_System_Com", "Win32_System_Ole", "Win32_System_TaskScheduler", "Win32_System_Threading", "Win32_System_Memory", "Win32_System_Registry", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging", "Win32_Globalization", "Win32_System_Variant"] }
+[dev-dependencies]
+native-tls = "0.2"
+rcgen = { version = "0.14.10", default-features = false, features = ["ring", "pem"] }
+rsa = "0.9"
 [build-dependencies]
 winresource = "0.1"
 [profile.release]

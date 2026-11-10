@@ -1,4 +1,6 @@
 #![cfg_attr(windows, windows_subsystem = "windows")]
+#[cfg(any(windows, test))]
+mod connectivity;
 #[cfg(windows)]
 mod dns;
 #[cfg(windows)]
@@ -22,7 +24,15 @@ fn run() -> anyhow::Result<()> {
         Some("--worker") => dns::worker(),
         Some("--startup") => {
             if platform::startup_enabled()? {
-                platform::submit(Action::Check)?;
+                let result = platform::submit(Action::Check)?;
+                if result.state == "ConnectivityUnverified" {
+                    platform::message(
+                        &ui::translate(
+                            "DNS erişimi doğrulanamadı · Sonraki kontrolde yeniden denenecek",
+                        ),
+                        false,
+                    );
+                }
             }
             Ok(())
         }

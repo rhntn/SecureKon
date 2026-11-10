@@ -14,6 +14,7 @@ struct App {
     setup: bool,
     installed: bool,
     enabled: bool,
+    dns_preferences: DnsPreferences,
     provider: usize,
     url: String,
     ip4: [String; 2],
@@ -43,6 +44,7 @@ impl App {
             setup,
             installed: false,
             enabled: p::startup_enabled().unwrap_or(false),
+            dns_preferences: p::dns_preferences().unwrap_or_default(),
             provider,
             url: String::new(),
             ip4: Default::default(),
@@ -140,6 +142,76 @@ impl App {
             }
         });
     }
+    fn dns_controls(&mut self, ui: &mut egui::Ui) {
+        let ctx = ui.ctx().clone();
+        egui::Frame::new()
+            .fill(Color32::from_rgb(24, 32, 45))
+            .inner_margin(12.0)
+            .corner_radius(10.0)
+            .show(ui, |ui| {
+                for windows in [true, false] {
+                    let on = if windows {
+                        self.dns_preferences.windows_dns
+                    } else {
+                        self.dns_preferences.browser_doh
+                    };
+                    ui.horizontal(|ui| {
+                        ui.vertical(|ui| {
+                            ui.label(
+                                RichText::new(self.t(if windows {
+                                    "Windows DNS"
+                                } else {
+                                    "Chrome ve Edge · Şifreli DNS"
+                                }))
+                                .strong(),
+                            );
+                            ui.label(
+                                RichText::new(self.t(if windows && !on {
+                                    "Otomatik DNS"
+                                } else if on {
+                                    "Durum: Açık"
+                                } else {
+                                    "Durum: Kapalı"
+                                }))
+                                .size(12.0)
+                                .color(if on {
+                                    ACCENT
+                                } else {
+                                    Color32::LIGHT_GRAY
+                                }),
+                            );
+                        });
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                            if ui
+                                .button(self.t(if windows && on {
+                                    "Otomatiğe dön"
+                                } else if on {
+                                    "Devre dışı bırak"
+                                } else {
+                                    "Etkinleştir"
+                                }))
+                                .clicked()
+                            {
+                                self.work(&ctx, "DNS ayarı değiştiriliyor…", move || {
+                                    let action = if windows {
+                                        Action::SetWindowsDns(!on)
+                                    } else {
+                                        Action::SetBrowserDoh(!on)
+                                    };
+                                    let status = p::submit(action)?;
+                                    Ok(status_message(&status.state).into())
+                                });
+                            }
+                        });
+                    });
+                    if windows {
+                        ui.add_space(8.0);
+                        ui.separator();
+                        ui.add_space(4.0);
+                    }
+                }
+            });
+    }
     fn body(&mut self, ui: &mut egui::Ui) {
         let ctx = ui.ctx().clone();
         ui.horizontal(|ui| {
@@ -183,6 +255,8 @@ impl App {
             }
         } else {
             egui::Frame::new().fill(Color32::from_rgb(24,32,45)).inner_margin(16.0).corner_radius(10.0).show(ui,|ui|{ui.horizontal(|ui|{ui.vertical(|ui|{ui.label(RichText::new(self.t("Başlangıçta çalıştır")).strong());ui.label(RichText::new(self.t(if self.enabled{"Durum: Açık"}else{"Durum: Kapalı"})).color(if self.enabled{ACCENT}else{Color32::LIGHT_GRAY}));});ui.with_layout(egui::Layout::right_to_left(egui::Align::Center),|ui|{if ui.button(self.t(if self.enabled{"Devre dışı bırak"}else{"Etkinleştir"})).clicked(){let on=!self.enabled;self.work(&ctx,"Başlangıç ayarı değiştiriliyor…",move||{p::set_startup(on)?;Ok(if on{"Başlangıç denetimi etkinleştirildi."}else{"Başlangıç denetimi devre dışı."}.into())});}});});ui.add_space(8.0);ui.label(RichText::new(self.t("Oturum açıldığında DNS ayarlarını kontrol eder ve düzeltir.\nKapatmak mevcut DNS ayarlarını değiştirmez.")).size(12.0).color(Color32::LIGHT_GRAY));});
+            ui.add_space(12.0);
+            self.dns_controls(ui);
             ui.add_space(16.0);
             ui.label(self.t("DNS sağlayıcısı"));
             let old = self.provider;
@@ -248,12 +322,7 @@ impl App {
                     Err(e) => self.error(e),
                     Ok(()) => self.work(&ctx, "DNS ayarları uygulanıyor…", move || {
                         let r = p::submit(Action::Apply(c))?;
-                        Ok(if r.state == "Offline" {
-                            "Kaydedildi · Aktif bağlantı yok"
-                        } else {
-                            "DNS ayarları uygulandı"
-                        }
-                        .into())
+                        Ok(status_message(&r.state).into())
                     }),
                 }
             }
@@ -276,6 +345,7 @@ impl eframe::App for App {
                         self.status = s;
                     }
                     self.enabled = p::startup_enabled().unwrap_or(self.enabled);
+                    self.dns_preferences = p::dns_preferences().unwrap_or(self.dns_preferences);
                 }
                 Err(e) => self.error(e),
             }
@@ -283,6 +353,10 @@ impl eframe::App for App {
         if !self.setup && self.busy.is_none() && self.last_poll.elapsed() > Duration::from_secs(2) {
             match p::startup_enabled() {
                 Ok(v) => self.enabled = v,
+                Err(e) => self.error(e),
+            }
+            match p::dns_preferences() {
+                Ok(v) => self.dns_preferences = v,
                 Err(e) => self.error(e),
             }
             self.last_poll = Instant::now();
@@ -299,47 +373,50 @@ impl eframe::App for App {
             .fill(BG)
             .inner_margin(24.0)
             .show(ui, |ui| {
-                ui.set_min_width(ui.available_width());
-                let busy = self.busy.is_some();
-                ui.add_enabled_ui(!busy, |ui| self.body(ui));
-                ui.add_space(16.0);
-                ui.horizontal_wrapped(|ui| {
-                    if busy {
-                        ui.spinner();
-                    }
-                    ui.label(
-                        RichText::new(self.t(&self.status))
-                            .size(12.0)
-                            .color(if self.error {
+                egui::ScrollArea::vertical().show(ui, |ui| {
+                    ui.set_min_width(ui.available_width());
+                    let busy = self.busy.is_some();
+                    ui.add_enabled_ui(!busy, |ui| self.body(ui));
+                    ui.add_space(16.0);
+                    ui.horizontal_wrapped(|ui| {
+                        if busy {
+                            ui.spinner();
+                        }
+                        ui.label(RichText::new(self.t(&self.status)).size(12.0).color(
+                            if self.error {
                                 Color32::from_rgb(255, 145, 145)
                             } else {
                                 Color32::from_rgb(163, 183, 201)
-                            }),
-                    );
-                });
-                ui.add_space(14.0);
-                ui.separator();
-                ui.add_space(8.0);
-                ui.add_enabled_ui(!busy, |ui| {
-                    ui.horizontal(|ui| {
-                        if !self.setup
-                            && ui
-                                .add(
-                                    egui::Button::new(
-                                        RichText::new(self.t("SecureKon'u kaldır"))
-                                            .color(Color32::WHITE),
+                            },
+                        ));
+                    });
+                    ui.add_space(14.0);
+                    ui.separator();
+                    ui.add_space(8.0);
+                    ui.add_enabled_ui(!busy, |ui| {
+                        ui.horizontal(|ui| {
+                            if !self.setup
+                                && ui
+                                    .add(
+                                        egui::Button::new(
+                                            RichText::new(self.t("SecureKon'u kaldır"))
+                                                .color(Color32::WHITE),
+                                        )
+                                        .fill(Color32::from_rgb(48, 58, 73))
+                                        .stroke(Stroke::new(1.0, Color32::GRAY)),
                                     )
-                                    .fill(Color32::from_rgb(48, 58, 73))
-                                    .stroke(Stroke::new(1.0, Color32::GRAY)),
-                                )
-                                .clicked()
-                        {
-                            self.remove = true;
-                        }
-                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                            if ui.link(self.t("Hakkında")).clicked() {
-                                self.about = true;
+                                    .clicked()
+                            {
+                                self.remove = true;
                             }
+                            ui.with_layout(
+                                egui::Layout::right_to_left(egui::Align::Center),
+                                |ui| {
+                                    if ui.link(self.t("Hakkında")).clicked() {
+                                        self.about = true;
+                                    }
+                                },
+                            );
                         });
                     });
                 });
@@ -442,10 +519,23 @@ fn flag(ui: &mut egui::Ui, code: &str, selected: bool) -> egui::Response {
     }
     response
 }
+fn status_message(state: &str) -> &'static str {
+    match state {
+        "Offline" => "Kaydedildi · Aktif bağlantı yok",
+        "ConnectivityUnverified" => {
+            "DNS erişimi doğrulanamadı · Sonraki kontrolde yeniden denenecek"
+        }
+        "IPv4Only" => "IPv4 DNS uygulandı · IPv6 bağlantısı yok",
+        "WindowsAutomatic" => "Windows DNS otomatik olarak ayarlandı",
+        "BrowserDnsEnabled" => "Chrome ve Edge için şifreli DNS açıldı",
+        "BrowserDnsDisabled" => "Chrome ve Edge için şifreli DNS kapatıldı",
+        _ => "DNS ayarları uygulandı",
+    }
+}
 pub fn run(setup: bool, remove: bool) -> Result<()> {
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
-            .with_inner_size([600.0, if setup { 430.0 } else { 650.0 }])
+            .with_inner_size([600.0, if setup { 430.0 } else { 790.0 }])
             .with_min_inner_size([550.0, if setup { 400.0 } else { 620.0 }])
             .with_icon(eframe::icon_data::from_png_bytes(include_bytes!(
                 "../assets/icon.png"

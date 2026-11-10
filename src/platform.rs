@@ -358,6 +358,14 @@ pub fn config() -> Result<Config> {
     c.validate()?;
     Ok(c)
 }
+pub fn dns_preferences() -> Result<crate::model::DnsPreferences> {
+    let path = data_dir()?.join("dns-preferences.json");
+    if path.try_exists()? {
+        read_json(&path)
+    } else {
+        Ok(crate::model::DnsPreferences::default())
+    }
+}
 pub fn submit(action: Action) -> Result<Status> {
     let _com = Com::new()?;
     let root = data_dir()?;

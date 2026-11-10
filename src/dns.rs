@@ -1,9 +1,18 @@
-use crate::{model::*, platform::*};
+use crate::{
+    connectivity::{self, V6State},
+    model::*,
+    platform::*,
+};
 use anyhow::{Context, Result, ensure};
+use std::{
+    net::{IpAddr, Ipv4Addr, Ipv6Addr},
+    time::{Duration, Instant},
+};
 use windows::{
     Win32::{
         Foundation::*,
         NetworkManagement::{IpHelper::*, Ndis::IfOperStatusUp},
+        Networking::WinSock::*,
     },
     core::PWSTR,
 };
@@ -11,10 +20,11 @@ use winreg::{RegKey, enums::*};
 struct Adapter {
     guid: windows::core::GUID,
     name: String,
+    index: u32,
     v4: bool,
     v6: bool,
 }
-fn adapters() -> Result<Vec<Adapter>> {
+fn adapters(active_only: bool) -> Result<Vec<Adapter>> {
     unsafe {
         let mut table = std::ptr::null_mut();
         GetIfTable2(&mut table).ok()?;
@@ -23,11 +33,11 @@ fn adapters() -> Result<Vec<Adapter>> {
         let physical: Vec<_> = rows
             .iter()
             .filter(|r| {
-                r.OperStatus == IfOperStatusUp
+                (!active_only || r.OperStatus == IfOperStatusUp)
                     && r.InterfaceAndOperStatusFlags._bitfield & 1 != 0
                     && (r.Type == IF_TYPE_ETHERNET_CSMACD || r.Type == IF_TYPE_IEEE80211)
             })
-            .map(|r| (r.InterfaceIndex, r.InterfaceGuid))
+            .map(|r| (r.InterfaceIndex, r.InterfaceGuid, r.InterfaceLuid.Value))
             .collect();
         FreeMibTable(table.cast());
         let mut size = 16384u32;
@@ -52,14 +62,14 @@ fn adapters() -> Result<Vec<Adapter>> {
             let mut result = vec![];
             while !p.is_null() {
                 let a = &*p;
-                if let Some((_, guid)) = physical
-                    .iter()
-                    .find(|(idx, _)| *idx == a.Anonymous1.Anonymous.IfIndex)
+                if let Some((idx, guid, _)) =
+                    physical.iter().find(|(_, _, luid)| *luid == a.Luid.Value)
                 {
                     let flags = a.Anonymous2.Flags;
                     result.push(Adapter {
                         guid: *guid,
                         name: a.FriendlyName.to_string()?,
+                        index: *idx,
                         v4: flags & 0x80 != 0,
                         v6: flags & 0x100 != 0,
                     });
@@ -182,17 +192,22 @@ fn apply_adapter(a: &Adapter, ips: &[String], url: &str, v6: bool) -> Result<boo
         if v6 { 6 } else { 4 }
     )
 }
-fn browsers(c: &Config) -> Result<bool> {
+fn browsers(c: &Config, enabled: bool) -> Result<bool> {
     let mut changed = false;
     for path in [
         r"SOFTWARE\Policies\Google\Chrome",
         r"SOFTWARE\Policies\Microsoft\Edge",
     ] {
         let (k, _) = RegKey::predef(HKEY_LOCAL_MACHINE).create_subkey(path)?;
-        for (name, wanted) in [
-            ("DnsOverHttpsTemplates", c.url.as_str()),
-            ("DnsOverHttpsMode", "secure"),
-        ] {
+        let desired = if enabled {
+            vec![
+                ("DnsOverHttpsTemplates", c.url.as_str()),
+                ("DnsOverHttpsMode", "secure"),
+            ]
+        } else {
+            vec![("DnsOverHttpsMode", "off")]
+        };
+        for (name, wanted) in desired {
             let right = k
                 .get_raw_value(name)
                 .map(|v| v.vtype == REG_SZ)
@@ -207,56 +222,385 @@ fn browsers(c: &Config) -> Result<bool> {
                 "Browser policy verification failed"
             );
         }
+        if !enabled {
+            match k.delete_value("DnsOverHttpsTemplates") {
+                Ok(()) => changed = true,
+                Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+                Err(e) => return Err(e.into()),
+            }
+            ensure!(
+                matches!(k.get_raw_value("DnsOverHttpsTemplates"), Err(e) if e.kind() == std::io::ErrorKind::NotFound),
+                "Browser template cleanup verification failed"
+            );
+        }
     }
     Ok(changed)
 }
-pub fn apply(c: &Config, wait: bool) -> Result<String> {
+fn has_v6_path(a: &Adapter) -> Result<bool> {
+    unsafe {
+        let mut addresses = std::ptr::null_mut();
+        GetUnicastIpAddressTable(AF_INET6, &mut addresses).ok()?;
+        let rows = std::slice::from_raw_parts(
+            (*addresses).Table.as_ptr(),
+            (*addresses).NumEntries as usize,
+        );
+        let address = rows.iter().any(|r| {
+            r.Address.si_family == AF_INET6
+                && connectivity::V6Address {
+                    interface: r.InterfaceIndex,
+                    ip: Ipv6Addr::from(r.Address.Ipv6.sin6_addr.u.Byte),
+                    preferred: r.DadState == IpDadStatePreferred,
+                    valid_lifetime: r.ValidLifetime,
+                    preferred_lifetime: r.PreferredLifetime,
+                    skip_as_source: r.SkipAsSource,
+                }
+                .usable_on(a.index)
+        });
+        FreeMibTable(addresses.cast());
+        if !address {
+            return Ok(false);
+        }
+        let mut routes = std::ptr::null_mut();
+        GetIpForwardTable2(AF_INET6, &mut routes).ok()?;
+        let rows =
+            std::slice::from_raw_parts((*routes).Table.as_ptr(), (*routes).NumEntries as usize);
+        let route = rows.iter().any(|r| {
+            r.DestinationPrefix.Prefix.si_family == AF_INET6
+                && connectivity::V6Route {
+                    interface: r.InterfaceIndex,
+                    prefix: Ipv6Addr::from(r.DestinationPrefix.Prefix.Ipv6.sin6_addr.u.Byte),
+                    prefix_length: r.DestinationPrefix.PrefixLength,
+                    valid_lifetime: r.ValidLifetime,
+                    loopback: r.Loopback,
+                }
+                .default_on(a.index)
+        });
+        FreeMibTable(routes.cast());
+        Ok(route)
+    }
+}
+
+fn socket_address(ip: IpAddr) -> SOCKADDR_INET {
+    match ip {
+        IpAddr::V6(ip) => SOCKADDR_INET {
+            Ipv6: SOCKADDR_IN6 {
+                sin6_family: AF_INET6,
+                sin6_addr: IN6_ADDR {
+                    u: IN6_ADDR_0 { Byte: ip.octets() },
+                },
+                ..Default::default()
+            },
+        },
+        IpAddr::V4(ip) => SOCKADDR_INET {
+            Ipv4: SOCKADDR_IN {
+                sin_family: AF_INET,
+                sin_addr: IN_ADDR {
+                    S_un: IN_ADDR_0 {
+                        S_addr: u32::from_ne_bytes(ip.octets()),
+                    },
+                },
+                ..Default::default()
+            },
+        },
+    }
+}
+
+fn source_for(a: &Adapter, target: IpAddr) -> Result<IpAddr> {
+    unsafe {
+        let destination = socket_address(target);
+        let mut route = MIB_IPFORWARD_ROW2::default();
+        let mut source = SOCKADDR_INET::default();
+        GetBestRoute2(
+            None,
+            a.index,
+            None,
+            &destination,
+            0,
+            &mut route,
+            &mut source,
+        )
+        .ok()?;
+        ensure!(
+            route.InterfaceIndex == a.index && route.ValidLifetime > 0,
+            "Provider route is not on selected adapter"
+        );
+        let ip = match source.si_family {
+            AF_INET6 => IpAddr::V6(Ipv6Addr::from(source.Ipv6.sin6_addr.u.Byte)),
+            AF_INET => IpAddr::V4(Ipv4Addr::from(
+                source.Ipv4.sin_addr.S_un.S_addr.to_ne_bytes(),
+            )),
+            _ => anyhow::bail!("No usable source address"),
+        };
+        ensure!(
+            !ip.is_unspecified() && !ip.is_loopback(),
+            "Invalid source address"
+        );
+        if let IpAddr::V6(ip) = ip {
+            ensure!(connectivity::usable_v6(ip), "No usable IPv6 source address");
+        }
+        if target.is_ipv6() {
+            let mut entry = MIB_UNICASTIPADDRESS_ROW {
+                Address: source,
+                InterfaceIndex: a.index,
+                ..Default::default()
+            };
+            GetUnicastIpAddressEntry(&mut entry).ok()?;
+            ensure!(
+                entry.DadState == IpDadStatePreferred
+                    && entry.ValidLifetime > 0
+                    && entry.PreferredLifetime > 0
+                    && !entry.SkipAsSource,
+                "Selected IPv6 source is not usable"
+            );
+        }
+        // Confirm the OS route with this bound source cannot select a different
+        // adapter (including weak-host / multi-homed configurations).
+        GetBestRoute2(
+            None,
+            0,
+            Some(&source),
+            &destination,
+            0,
+            &mut route,
+            &mut SOCKADDR_INET::default(),
+        )
+        .ok()?;
+        ensure!(
+            route.InterfaceIndex == a.index,
+            "Bound source would route through another adapter"
+        );
+        Ok(ip)
+    }
+}
+
+fn probe_servers(a: &Adapter, ips: &[String], url: &str, deadline: Instant) -> Result<()> {
+    for ip in ips {
+        let target = ip.parse()?;
+        let source = source_for(a, target).with_context(|| format!("{ip}: route"))?;
+        connectivity::probe(url, target, source, deadline).with_context(|| format!("{ip}: DoH"))?;
+    }
+    Ok(())
+}
+
+fn ownership_path(a: &Adapter) -> Result<std::path::PathBuf> {
+    Ok(data_dir()?.join(format!("ipv6-owned-{:?}.json", a.guid)))
+}
+
+// Verify static assignment, not the effective DHCP/RA resolver list: automatic
+// DNS can legitimately return nonempty resolver addresses immediately after reset.
+fn static_dns(a: &Adapter, v6: bool) -> Result<String> {
+    let path = format!(
+        r"SYSTEM\CurrentControlSet\Services\{}\Parameters\Interfaces\{{{:?}}}",
+        if v6 { "Tcpip6" } else { "Tcpip" },
+        a.guid
+    );
+    let key = match RegKey::predef(HKEY_LOCAL_MACHINE).open_subkey(&path) {
+        Ok(key) => key,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(String::new()),
+        Err(e) => return Err(e.into()),
+    };
+    match key.get_value("NameServer") {
+        Ok(value) => Ok(value),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(String::new()),
+        Err(e) => Err(e.into()),
+    }
+}
+
+/// Only remove an exact SecureKon-owned DNS+DoH configuration. config.json is
+/// the migration evidence for v2.0.0, which had no per-adapter ownership ledger.
+fn clear_owned_v6(a: &Adapter, legacy: Option<&Config>) -> Result<Option<bool>> {
+    if static_dns(a, true)?.trim().is_empty() {
+        return Ok(Some(false));
+    }
+    let before = read(a.guid, true)?;
+    let path = ownership_path(a)?;
+    let owned = if path.try_exists()? {
+        Some(read_json::<Config>(&path)?)
+    } else {
+        None
+    };
+    let ours = owned
+        .iter()
+        .chain(legacy)
+        .any(|c| matches(&before.0, &c.ipv6, &c.url));
+    if !ours {
+        return Ok(None);
+    }
+    reset_static_dns(a, true).map(Some)
+}
+
+fn reset_static_dns(a: &Adapter, v6: bool) -> Result<bool> {
+    if static_dns(a, v6)?.trim().is_empty() {
+        return Ok(false);
+    }
+    let mut empty = wide("");
+    let reset = DNS_INTERFACE_SETTINGS3 {
+        Version: 3,
+        Flags: (DNS_SETTING_NAMESERVER | if v6 { DNS_SETTING_IPV6 } else { 0 }) as u64,
+        NameServer: PWSTR(empty.as_mut_ptr()),
+        ..Default::default()
+    };
+    unsafe {
+        SetInterfaceDnsSettings(a.guid, (&reset as *const DNS_INTERFACE_SETTINGS3).cast()).ok()?;
+    }
+    for _ in 0..3 {
+        std::thread::sleep(Duration::from_millis(200));
+        if static_dns(a, v6)?.trim().is_empty() {
+            return Ok(true);
+        }
+    }
+    anyhow::bail!(
+        "IPv{} automatic DNS readback failed",
+        if v6 { 6 } else { 4 }
+    )
+}
+
+fn windows_automatic() -> Result<ApplyResult> {
+    let mut errors = Vec::new();
+    // Include disconnected physical adapters, so reconnecting cannot bring back
+    // stale static DNS. Virtual/VPN adapters and IP addressing are untouched.
+    for a in adapters(false)? {
+        for (v6, enabled) in [(false, a.v4), (true, a.v6)] {
+            if enabled && let Err(e) = reset_static_dns(&a, v6) {
+                errors.push(format!("{} / IPv{}: {e:#}", a.name, if v6 { 6 } else { 4 }));
+            }
+        }
+    }
+    ensure!(errors.is_empty(), "{}", errors.join("\n"));
+    Ok(ApplyResult {
+        state: "WindowsAutomatic".into(),
+        checks: Vec::new(),
+    })
+}
+
+struct ApplyResult {
+    state: String,
+    checks: Vec<ConnectivityCheck>,
+}
+
+fn apply_windows(c: &Config, wait: bool) -> Result<ApplyResult> {
     c.validate()?;
-    let mut changed = browsers(c)?;
-    let mut list = adapters()?;
+    let legacy = match config() {
+        Ok(c) => Some(c),
+        Err(e) => {
+            // Missing initial config is expected; other errors must not silently
+            // discard ownership information during an upgrade.
+            if data_dir()?.join("config.json").try_exists()? {
+                return Err(e);
+            }
+            None
+        }
+    };
+    let mut changed = false;
+    let mut list = adapters(true)?;
     if wait {
         for _ in 0..12 {
             if !list.is_empty() {
                 break;
             }
-            std::thread::sleep(std::time::Duration::from_secs(5));
-            list = adapters()?;
+            std::thread::sleep(Duration::from_secs(5));
+            list = adapters(true)?;
         }
     }
+    // Keep the full worker within its existing three-minute execution limit.
+    let deadline = Instant::now() + Duration::from_secs(90);
     let mut errors = Vec::new();
+    let mut checks = Vec::new();
+    let mut deferred = false;
+    let mut ipv4_only = false;
     for a in &list {
-        for (v6, enabled, ips) in [(false, a.v4, &c.ipv4), (true, a.v6, &c.ipv6)] {
-            if !enabled {
-                continue;
+        let mut check = ConnectivityCheck {
+            adapter: a.name.clone(),
+            ipv4: "Disabled".into(),
+            ipv6: "Disabled".into(),
+            detail: String::new(),
+        };
+        if a.v6
+            && let Some(previous) = legacy.as_ref()
+            && matches(&read(a.guid, true)?.0, &previous.ipv6, &previous.url)
+        {
+            // Preserve v2.0.0 ownership before saving a changed provider,
+            // even when the new provider cannot be reached this time.
+            atomic_json(&ownership_path(a)?, previous)?;
+        }
+        if a.v4 {
+            match connectivity::retry(
+                || apply_adapter(a, &c.ipv4, &c.url, false),
+                || std::thread::sleep(Duration::from_millis(500)),
+            ) {
+                Ok(v) => changed |= v,
+                Err(e) => errors.push(format!("{} / IPv4: {e:#}", a.name)),
             }
-            let mut err = None;
-            for _ in 0..3 {
-                match apply_adapter(a, ips, &c.url, v6) {
-                    Ok(v) => {
-                        changed |= v;
-                        err = None;
-                        break;
-                    }
-                    Err(e) => {
-                        err = Some(e);
-                        std::thread::sleep(std::time::Duration::from_millis(500));
-                    }
+            match probe_servers(a, &c.ipv4, &c.url, deadline) {
+                Ok(()) => check.ipv4 = "Reachable".into(),
+                Err(e) => {
+                    check.ipv4 = "Unverified".into();
+                    deferred = true;
+                    check.detail.push_str(&format!("IPv4: {e:#}\n"));
                 }
             }
-            if let Some(e) = err {
-                errors.push(format!("{}: {e:#}", a.name));
+        }
+        if a.v6 {
+            match connectivity::assess_v6(
+                || has_v6_path(a),
+                || probe_servers(a, &c.ipv6, &c.url, deadline),
+                || std::thread::sleep(Duration::from_millis(500)),
+            ) {
+                V6State::NoPath => {
+                    check.ipv6 = "NoPath".into();
+                    ipv4_only = true;
+                    match clear_owned_v6(a, legacy.as_ref()) {
+                        Ok(Some(v)) => changed |= v,
+                        Ok(None) => {
+                            deferred = true;
+                            check.detail.push_str("IPv6: no usable path; DNS settings not owned by SecureKon were preserved");
+                        }
+                        Err(e) => errors.push(format!("{} / IPv6 cleanup: {e:#}", a.name)),
+                    }
+                    if !a.v4 {
+                        deferred = true;
+                    }
+                }
+                V6State::Reachable => {
+                    check.ipv6 = "Reachable".into();
+                    // Write intent first: interrupted writes remain attributable.
+                    atomic_json(&ownership_path(a)?, c)?;
+                    match connectivity::retry(
+                        || apply_adapter(a, &c.ipv6, &c.url, true),
+                        || std::thread::sleep(Duration::from_millis(500)),
+                    ) {
+                        Ok(v) => changed |= v,
+                        Err(e) => errors.push(format!("{} / IPv6: {e:#}", a.name)),
+                    }
+                }
+                V6State::Deferred(reason) => {
+                    check.ipv6 = "Unverified".into();
+                    deferred = true;
+                    check.detail.push_str(&format!("IPv6: {reason}"));
+                }
             }
         }
+        if !a.v4 && !a.v6 {
+            deferred = true;
+        }
+        checks.push(check);
     }
     ensure!(errors.is_empty(), "{}", errors.join("\n"));
-    Ok(if list.is_empty() {
-        "Offline"
-    } else if changed {
-        "Repaired"
-    } else {
-        "Healthy"
-    }
-    .into())
+    Ok(ApplyResult {
+        state: if list.is_empty() {
+            "Offline"
+        } else if deferred {
+            "ConnectivityUnverified"
+        } else if ipv4_only {
+            "IPv4Only"
+        } else if changed {
+            "Repaired"
+        } else {
+            "Healthy"
+        }
+        .into(),
+        checks,
+    })
 }
 pub fn worker() -> Result<()> {
     ensure!(is_admin(), "Worker requires elevation");
@@ -264,29 +608,68 @@ pub fn worker() -> Result<()> {
     trusted_existing(&root)?;
     let bytes = read_limited(&root.join("Requests/request-v2.json"), 16384)?;
     let req = Request::parse(&bytes)?;
-    let result = (|| -> Result<String> {
+    let result = (|| -> Result<ApplyResult> {
         let c = match &req.action {
             Action::Apply(c) => c.clone(),
-            Action::Check => config()?,
+            _ => config()?,
         };
-        let state = apply(&c, matches!(req.action, Action::Check)).context("DNS update")?;
+        let mut preferences = dns_preferences()?;
+        preferences.update(&req.action);
+        if matches!(
+            req.action,
+            Action::SetWindowsDns(_) | Action::SetBrowserDoh(_)
+        ) {
+            // Persist the user's intent before applying. A partial OS failure is
+            // reported, and subsequent checks retry the requested state.
+            atomic_json(&root.join("dns-preferences.json"), &preferences)?;
+        }
+        let state = match req.action {
+            Action::SetBrowserDoh(on) => {
+                browsers(&c, on)?;
+                ApplyResult {
+                    state: if on {
+                        "BrowserDnsEnabled"
+                    } else {
+                        "BrowserDnsDisabled"
+                    }
+                    .into(),
+                    checks: Vec::new(),
+                }
+            }
+            Action::SetWindowsDns(true) => apply_windows(&c, false)?,
+            Action::SetWindowsDns(false) => windows_automatic()?,
+            Action::Apply(_) | Action::Check => {
+                let browser_changed = browsers(&c, preferences.browser_doh)?;
+                let mut result = if preferences.windows_dns {
+                    apply_windows(&c, matches!(req.action, Action::Check))?
+                } else {
+                    windows_automatic()?
+                };
+                if browser_changed && result.state == "Healthy" {
+                    result.state = "Repaired".into();
+                }
+                result
+            }
+        };
         if matches!(req.action, Action::Apply(_)) {
             atomic_json(&root.join("config.json"), &c)?;
         }
         Ok(state)
     })();
     let s = match result {
-        Ok(state) => Status {
+        Ok(result) => Status {
             id: req.id,
             ok: true,
-            state,
+            state: result.state,
             detail: String::new(),
+            connectivity: result.checks,
         },
         Err(e) => Status {
             id: req.id,
             ok: false,
             state: "Failed".into(),
             detail: format!("{e:#}"),
+            connectivity: Vec::new(),
         },
     };
     atomic_json(&root.join("status-v2.json"), &s)?;

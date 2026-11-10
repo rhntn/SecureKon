@@ -101,6 +101,29 @@ pub fn presets() -> Vec<Config> {
     })
     .collect()
 }
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(default, deny_unknown_fields)]
+pub struct DnsPreferences {
+    pub windows_dns: bool,
+    pub browser_doh: bool,
+}
+impl Default for DnsPreferences {
+    fn default() -> Self {
+        Self {
+            windows_dns: true,
+            browser_doh: true,
+        }
+    }
+}
+impl DnsPreferences {
+    pub fn update(&mut self, action: &Action) {
+        match action {
+            Action::SetWindowsDns(on) => self.windows_dns = *on,
+            Action::SetBrowserDoh(on) => self.browser_doh = *on,
+            Action::Apply(_) | Action::Check => {}
+        }
+    }
+}
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Request {
@@ -112,6 +135,8 @@ pub struct Request {
 pub enum Action {
     Check,
     Apply(Config),
+    SetWindowsDns(bool),
+    SetBrowserDoh(bool),
 }
 impl Request {
     pub fn parse(bytes: &[u8]) -> Result<Self> {
@@ -132,6 +157,15 @@ pub struct Status {
     pub id: String,
     pub ok: bool,
     pub state: String,
+    pub detail: String,
+    #[serde(default)]
+    pub connectivity: Vec<ConnectivityCheck>,
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ConnectivityCheck {
+    pub adapter: String,
+    pub ipv4: String,
+    pub ipv6: String,
     pub detail: String,
 }
 pub fn same_addresses(a: &[String], b: &[String]) -> bool {
@@ -237,5 +271,57 @@ mod tests {
         ] {
             assert_eq!(language(a), b);
         }
+    }
+    #[test]
+    fn status_keeps_connectivity_separate_and_reads_v2_status() {
+        let old = r#"{"id":"test","ok":true,"state":"Healthy","detail":""}"#;
+        let mut status: Status = serde_json::from_str(old).unwrap();
+        assert!(status.connectivity.is_empty());
+        status.state = "ConnectivityUnverified".into();
+        status.connectivity.push(ConnectivityCheck {
+            adapter: "Wi-Fi".into(),
+            ipv4: "Reachable".into(),
+            ipv6: "Unverified".into(),
+            detail: "timeout".into(),
+        });
+        let decoded: Status =
+            serde_json::from_slice(&serde_json::to_vec(&status).unwrap()).unwrap();
+        assert!(decoded.ok);
+        assert_eq!(decoded.state, "ConnectivityUnverified");
+        assert_eq!(decoded.connectivity[0].ipv6, "Unverified");
+    }
+    #[test]
+    fn disabling_windows_and_browsers_is_independent_and_persistent() {
+        let mut prefs: DnsPreferences = serde_json::from_str("{}").unwrap();
+        assert_eq!(prefs, DnsPreferences::default());
+        prefs.update(&Action::SetBrowserDoh(false));
+        assert!(prefs.windows_dns);
+        assert!(!prefs.browser_doh);
+        prefs.update(&Action::SetWindowsDns(false));
+        let mut saved: DnsPreferences =
+            serde_json::from_slice(&serde_json::to_vec(&prefs).unwrap()).unwrap();
+        saved.update(&Action::Check);
+        saved.update(&Action::Apply(presets()[1].clone()));
+        assert!(!saved.windows_dns && !saved.browser_doh);
+        saved.update(&Action::SetWindowsDns(true));
+        assert!(saved.windows_dns && !saved.browser_doh);
+    }
+    #[test]
+    fn toggle_requests_only_accept_booleans() {
+        for kind in ["SetBrowserDoh", "SetWindowsDns"] {
+            for value in ["true", "false"] {
+                let json = format!(
+                    r#"{{"id":"00000000000000000000000000000000","action":{{"kind":"{kind}","config":{value}}}}}"#
+                );
+                assert!(Request::parse(json.as_bytes()).is_ok());
+            }
+            for value in ["null", "0", "{}", r#""false""#] {
+                let json = format!(
+                    r#"{{"id":"00000000000000000000000000000000","action":{{"kind":"{kind}","config":{value}}}}}"#
+                );
+                assert!(Request::parse(json.as_bytes()).is_err());
+            }
+        }
+        assert!(serde_json::from_str::<DnsPreferences>(r#"{"run":"calc.exe"}"#).is_err());
     }
 }

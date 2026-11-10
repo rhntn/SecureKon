@@ -6,6 +6,6 @@ if errorlevel 1 exit /b 1
 cargo build --release --locked
 if errorlevel 1 exit /b 1
 if not exist dist mkdir dist
-copy /y target\release\securekon.exe dist\SecureKonSetup-2.0.0.exe >nul
+copy /y target\release\securekon.exe dist\SecureKonSetup-2.0.1.exe >nul
 if errorlevel 1 exit /b 1
-echo dist\SecureKonSetup-2.0.0.exe
+echo dist\SecureKonSetup-2.0.1.exe

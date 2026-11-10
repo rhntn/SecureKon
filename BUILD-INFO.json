@@ -1,9 +1,13 @@
 {
-  "version": "2.0.0",
+  "version": "2.0.1",
   "target": "x86_64-pc-windows-gnu",
   "rust": "1.99.1",
-  "installer_sha256": "f21f5f7af6d7eeeef7fa37b69764cf8d79df973e01464822db2fb63938eaa15a",
-  "installer_bytes": 7873024,
+  "installer_sha256": "6759d53c48fbc82a05100ff8f69f2ea00f41200a73ceb3a4b082ca6ce938b4ff",
+  "installer_bytes": 8946176,
+  "unit_tests_passed": 26,
+  "windows_target_clippy": "passed with warnings denied",
   "runtime_windows_tested": false,
-  "user_windows_test_report": "User reported tested with no problems, 2026-10-30"
+  "local_https_ipv4_ipv6_tests": true,
+  "base_commit": "0185961",
+  "original_installer_sha256": "f21f5f7af6d7eeeef7fa37b69764cf8d79df973e01464822db2fb63938eaa15a"
 }

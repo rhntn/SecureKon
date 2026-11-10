@@ -413,5 +413,55 @@
     "Version",
     "Version",
     "版本"
+  ],
+  "DNS erişimi doğrulanamadı · Sonraki kontrolde yeniden denenecek": [
+    "DNS connectivity could not be verified · Will retry at the next check",
+    "DNS-Erreichbarkeit nicht bestätigt · Neuer Versuch bei der nächsten Prüfung",
+    "无法确认 DNS 连接 · 再次检查时重试"
+  ],
+  "IPv4 DNS uygulandı · IPv6 bağlantısı yok": [
+    "IPv4 DNS applied · No IPv6 connection",
+    "IPv4-DNS angewendet · Keine IPv6-Verbindung",
+    "已应用 IPv4 DNS · 无 IPv6 连接"
+  ],
+  "Windows DNS": [
+    "Windows DNS",
+    "Windows-DNS",
+    "Windows DNS"
+  ],
+  "Chrome ve Edge · Şifreli DNS": [
+    "Chrome and Edge · Secure DNS",
+    "Chrome und Edge · Sicheres DNS",
+    "Chrome 和 Edge · 加密 DNS"
+  ],
+  "Otomatik DNS": [
+    "Automatic DNS",
+    "Automatisches DNS",
+    "自动 DNS"
+  ],
+  "Otomatiğe dön": [
+    "Use automatic DNS",
+    "DNS automatisch beziehen",
+    "使用自动 DNS"
+  ],
+  "DNS ayarı değiştiriliyor…": [
+    "Updating DNS setting…",
+    "DNS-Einstellung wird geändert…",
+    "正在更新 DNS 设置…"
+  ],
+  "Windows DNS otomatik olarak ayarlandı": [
+    "Windows DNS set to automatic",
+    "Windows-DNS auf automatisch gesetzt",
+    "Windows DNS 已自动设置"
+  ],
+  "Chrome ve Edge için şifreli DNS açıldı": [
+    "Secure DNS enabled for Chrome and Edge",
+    "Sicheres DNS für Chrome und Edge aktiviert",
+    "Chrome 和 Edge 的加密 DNS 已启用"
+  ],
+  "Chrome ve Edge için şifreli DNS kapatıldı": [
+    "Secure DNS disabled for Chrome and Edge",
+    "Sicheres DNS für Chrome und Edge deaktiviert",
+    "Chrome 和 Edge 的加密 DNS 已关闭"
   ]
 }
